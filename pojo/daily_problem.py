@@ -1,7 +1,7 @@
 # pojo/user.py
 from sqlmodel import SQLModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import date
 
 
 class DailyProblem(SQLModel, table=True):
@@ -13,16 +13,28 @@ class DailyProblem(SQLModel, table=True):
 
     contest_id: int = Field(default=None, nullable=True)
 
+    problem_index: str = Field(
+        max_length=10,
+        default="",
+        nullable=True
+    )
+
     problem_name: str = Field(
         max_length=32,
         default="",
         nullable=True
     )
 
-    score: int = Field(default=0)
+    url: str = Field(
+        max_length=100,
+        default="",
+        nullable=True
+    )
 
-    created_time: datetime = Field(
-        default_factory=datetime.now
+    rating: int = Field(default=0)
+
+    daily_date: date = Field(
+        default_factory=date.today
     )
 
     def __repr__(self) -> str:

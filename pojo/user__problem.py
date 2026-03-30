@@ -13,6 +13,7 @@ class UserProblem(SQLModel, table=True):
 
     user_id: int = Field(nullable=False)
     problem_id: int = Field(nullable=False)
+
     created_time: datetime = Field(
         default_factory=datetime.now
     )

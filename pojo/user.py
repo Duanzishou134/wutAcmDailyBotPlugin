@@ -17,7 +17,7 @@ class User(SQLModel, table=True):
         index=True
     )
 
-    score: int = Field(default=0)
+    rating: int = Field(default=0)
 
     is_admin: bool = Field(default=False)
 
@@ -29,7 +29,6 @@ class User(SQLModel, table=True):
     codeforces_id: str = Field(
         max_length=32,
         default="",
-        unique=True,
         nullable=True
     )
 

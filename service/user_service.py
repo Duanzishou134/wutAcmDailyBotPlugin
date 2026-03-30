@@ -1,13 +1,13 @@
-import logging
+
 from datetime import datetime
 
-from sqlmodel import Session, select, delete
+from sqlmodel import Session, select, delete, desc
 from ..pojo import User
 from ..database import engine
 from ..constant import StatusConstant
 import time
 from ..utils import CodeforcesUtils
-logger = logging.getLogger(__name__)
+
 
 class UserService:
     def __init__(self):
@@ -63,7 +63,15 @@ class UserService:
             success = await self.codeforces_utils.check_ce_submission(user.codeforces_name, user.register_start_time)
             if success:
                 user.register_status = StatusConstant.FINISH
+                user.created_time = datetime.now()
                 session.add(user)
                 session.commit()
                 return True, f'欢迎你{user.codeforces_name}'
-            return False, '好像出了点小错误, 请检测你提交的是否是CE代码'
+            return False, '好像出了点小错误, 请检查你提交的是否是CE代码'
+
+    async def get_rankist(self):
+        with Session(engine) as session:
+            statement = select(User).order_by(desc(User.rating)).limit(10)
+            users = session.exec(statement).all()
+            return users
+

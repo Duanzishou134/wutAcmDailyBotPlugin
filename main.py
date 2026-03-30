@@ -7,7 +7,7 @@ from sqlalchemy.testing.provision import create_db
 from sqlmodel import Session, select
 
 from .pojo import User
-from .service import UserService
+from .service import UserService, DailyProblemService
 from .database import engine, init_db
 
 
@@ -17,6 +17,7 @@ class MyPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
         self.user_service = UserService()
+        self.daily_problem_service = DailyProblemService()
         init_db()
 
 
@@ -39,7 +40,7 @@ class MyPlugin(Star):
 
         if cmd == "finish":
             # 完成验证
-            yield event.plain_result(f"{event.get_sender_id()}")
+            # yield event.plain_result(f"{event.get_sender_id()}")
             success, result = await self.user_service.register_finish(
                 event.get_sender_id()
             )
@@ -64,8 +65,21 @@ class MyPlugin(Star):
                 yield event.plain_result("你已经绑定过账号了")
 
     @filter.command("daily problem")
-    async def hello_world(self, event: AstrMessageEvent):
+    async def daily_problem(self, event: AstrMessageEvent):
+        daily_url = await self.daily_problem_service.get_daily_problem()
+        yield event.plain_result(f"今天的每日一题是:{daily_url}")
 
-        yield event.plain_result(f"Hello!")
+    @filter.command("daily finish")
+    async def daily_finish(self, event: AstrMessageEvent):
+        qq = event.get_sender_id()
+        result = await self.daily_problem_service.daily_finish(qq)
+        yield event.plain_result(f"{result}")
 
-
+    @filter.command("rankist")
+    async def rank(self, event: AstrMessageEvent):
+        qq = event.get_sender_id()
+        result = await self.user_service.get_rankist()
+        result_str = "积分榜\n"
+        for user in result:
+            result_str += f"{user.codeforces_name}: {user.rating}\n"
+        yield event.plain_result(f"{result_str}")
