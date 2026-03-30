@@ -46,7 +46,7 @@ class UserService:
             user = session.exec(statement).first()
 
             if not user:
-                return False, "你还未开始账号，请输入/register <your_codeforces_name>"
+                return False, "你还未开始注册账号，请输入/register <your_codeforces_name>"
 
             if user.register_status == StatusConstant.FINISH:
                 return False, "你已注册账号"

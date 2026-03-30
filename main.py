@@ -37,7 +37,6 @@ class MyPlugin(Star):
 
         cmd = args[1].lower()
 
-
         if cmd == "finish":
             # 完成验证
             # yield event.plain_result(f"{event.get_sender_id()}")
