@@ -1,6 +1,6 @@
 # database.py
 from sqlmodel import SQLModel, create_engine
-from .pojo import User
+from .pojo import User, DailyProblem, UserProblem
 from sqlalchemy import inspect
 import os
 
