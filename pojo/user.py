@@ -5,57 +5,48 @@ from datetime import datetime
 
 
 class User(SQLModel, table=True):
-    """Codeforces 机器人用户表"""
 
-    __tablename__ = "cf_users"  # 自定义表名，避免与核心表冲突
-
+    __tablename__ = "cf_users"
     __table_args__ = {"extend_existing": True}
 
+    id: Optional[int] = Field(default=None, primary_key=True)
 
-    # ===== 主键 =====
-    id: Optional[int] = Field(default=None, primary_key=True, description="自增主键")
-
-    # ===== 基础信息 =====
     qq: str = Field(
         max_length=32,
         unique=True,
-        index=True,
-        description="QQ号"
+        index=True
     )
 
-    # ===== 积分系统 =====
-    score: int = Field(
-        default=0,
-        description="用户总积分"
-    )
+    score: int = Field(default=0)
 
-    # ===== 权限管理 =====
-    is_admin: bool = Field(
-        default=False,
-        description="是否为管理员"
-    )
+    is_admin: bool = Field(default=False)
 
-    # ===== Codeforces 绑定信息 =====
     codeforces_name: str = Field(
         max_length=64,
-        default="",
-        description="Codeforces 用户名"
+        default=""
     )
 
     codeforces_id: str = Field(
         max_length=32,
         default="",
         unique=True,
-        nullable=True,
-        description="Codeforces 用户ID（数字ID）"
+        nullable=True
     )
 
-    # ===== 时间字段 =====
-    created_time: datetime = Field(
-        default_factory=datetime.now,
-        description="用户注册时间"
+    # ===== CF验证 =====
+
+    register_start_time: Optional[int] = Field(
+        default=None
     )
+
+    created_time: datetime = Field(
+        default_factory=datetime.now
+    )
+
+    # 注册状态 0: 正在注册中  1:已完成注册
+    register_status: int = Field(default=0)
+
 
 
     def __repr__(self) -> str:
-        return f"<User(qq={self.qq}, codeforces_name={self.cf_name}, score={self.score})>"
+        return f"<User(qq={self.qq}, codeforces_name={self.codeforces_name}, score={self.score})>"
