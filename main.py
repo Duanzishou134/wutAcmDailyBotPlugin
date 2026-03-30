@@ -7,7 +7,6 @@ from sqlalchemy.testing.provision import create_db
 from sqlmodel import Session, select
 
 from .pojo import User
-from .service import CodeforcesService
 from .service import UserService
 from .database import engine, init_db
 
@@ -17,7 +16,6 @@ from .database import engine, init_db
 class MyPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-        self.codeforces_service = CodeforcesService()
         self.user_service = UserService()
         init_db()
 
@@ -65,5 +63,9 @@ class MyPlugin(Star):
             else:
                 yield event.plain_result("你已经绑定过账号了")
 
+    @filter.command("daily problem")
+    async def hello_world(self, event: AstrMessageEvent):
+
+        yield event.plain_result(f"Hello!")
 
 

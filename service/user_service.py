@@ -6,13 +6,12 @@ from ..pojo import User
 from ..database import engine
 from ..constant import StatusConstant
 import time
-import asyncio
-from .codeforces_service import CodeforcesService
+from ..utils import CodeforcesUtils
 logger = logging.getLogger(__name__)
 
 class UserService:
     def __init__(self):
-        self.codeforces_service = CodeforcesService()
+        self.codeforces_utils = CodeforcesUtils()
 
 
     def register_start(self, qq: str, codeforces_name: str) -> bool:
@@ -61,7 +60,7 @@ class UserService:
                 return False, "验证超时(2分钟)"
 
             # 异步检查CF提交
-            success = await self.codeforces_service.check_ce_submission(user.codeforces_name, user.register_start_time)
+            success = await self.codeforces_utils.check_ce_submission(user.codeforces_name, user.register_start_time)
             if success:
                 user.register_status = StatusConstant.FINISH
                 session.add(user)

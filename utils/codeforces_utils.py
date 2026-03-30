@@ -2,10 +2,10 @@ import aiohttp
 import asyncio
 from typing import Optional, Dict, List
 from datetime import datetime
-from ..config import Config
+from config import Config
 
 
-class CodeforcesService:
+class CodeforcesUtils:
 
     async def get_user_submissions(self, codeforces_name: str, count: int = 10) -> Optional[List[Dict]]:
         """获取用户最近的提交记录"""
