@@ -2,7 +2,7 @@ import aiohttp
 import asyncio
 from typing import Optional, Dict, List
 from datetime import datetime
-from config import Config
+from ..config import Config
 
 
 class CodeforcesUtils:
