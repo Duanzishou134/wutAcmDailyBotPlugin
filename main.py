@@ -1,4 +1,5 @@
 from datetime import time
+import os
 
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.message_components import Image, Reply
@@ -9,6 +10,7 @@ from sqlmodel import Session, select
 
 from .pojo import User
 from .service import UserService, DailyProblemService, PicService
+from .utils.html_render import render_template_to_image
 from .database import engine, init_db
 
 
@@ -20,6 +22,7 @@ class MyPlugin(Star):
         self.user_service = UserService()
         self.daily_problem_service = DailyProblemService()
         self.pic_service = PicService()
+        self.info_template = self._load_info_template()
         init_db()
 
 
@@ -93,18 +96,46 @@ class MyPlugin(Star):
 
     @filter.command("info")
     async def info(self, event: AstrMessageEvent):
+        args = event.get_message_str().split()
+        text_only = len(args) >= 2 and args[1] == "-t"
         qq = event.get_sender_id()
         success, result = await self.user_service.get_user_info(qq)
         if not success:
             yield event.plain_result(result)
             return
-        response = (
-            f"CF用户: {result['cf_name']}\n"
-            f"CF Rating: {result['cf_rating']}\n"
-            f"当前积分: {result['scores']}\n"
-            f"CF 做题数量: {result['solved_count']}"
-        )
-        yield event.plain_result(response)
+        if text_only:
+            response = (
+                f"CF用户: {result['cf_name']}\n"
+                f"CF Rating: {result['cf_rating']}\n"
+                f"当前积分: {result['scores']}\n"
+                f"CF 做题数量: {result['solved_count']}"
+            )
+            yield event.plain_result(response)
+            return
+        template_data = {
+            "qq_name": event.get_sender_name(),
+            "cf_name": result["cf_name"],
+            "solved": result["solved_count"],
+            "score": result["scores"],
+        }
+        try:
+            image_path = await render_template_to_image(
+                self.info_template,
+                template_data,
+                width=600,
+                height=400,
+                full_page=True,
+                image_type="png",
+            )
+            yield event.image_result(image_path)
+        except Exception:
+            response = (
+                f"CF用户: {result['cf_name']}\n"
+                f"CF Rating: {result['cf_rating']}\n"
+                f"当前积分: {result['scores']}\n"
+                f"CF 做题数量: {result['solved_count']}"
+            )
+            yield event.plain_result(f"图片渲染失败，已返回文本信息:\n{response}")
 
 
     @filter.command("help")
@@ -117,7 +148,8 @@ class MyPlugin(Star):
         "/daily problem 查看每日一题\n"
         "/daily finish 完成每日一题\n"
         "/rankist 查看每日一题积分榜(前十)\n"
-        "/info 查看当前用户信息\n"
+        "/info 查看当前用户信息(图片卡片)\n"
+        "/info -t 查看当前用户信息(文本)\n"
         "/pic <pic_name> 发送指定图片\n"
         "/pic -list [pic_name] 查看图片列表\n"
         "/add_pic <pic_name> <pic> [-n | -no-suffix] 添加图片(回复图片也可)"
@@ -179,3 +211,12 @@ class MyPlugin(Star):
                     if isinstance(item, Image):
                         return item
         return None
+
+    def _load_info_template(self) -> str:
+        template_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "asserts",
+            "template.html",
+        )
+        with open(template_path, "r", encoding="utf-8") as file:
+            return file.read()

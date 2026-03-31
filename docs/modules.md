@@ -6,7 +6,7 @@
   - /register 与 /register finish 账号绑定流程。
   - /daily problem /daily finish /daily change 每日一题流程。
   - /rankist 积分榜（前十）。
-  - /info 用户信息查询。
+  - /info 用户信息查询（本地渲染图片卡片，失败回退文本），/info -t 输出文本。
   - /pic /add_pic 图片功能。
 
 ## service/user_service.py
@@ -32,6 +32,9 @@
 - 做题统计：拉取提交并统计去重的 OK 数量。
 - 校验逻辑：匹配 contestId/index、判定 verdict。
 - 随机题：按 rating 与标签过滤。
+
+## utils/html_render.py
+- 本地 HTML 模板渲染：Jinja2 + Playwright（优先使用本机 Edge/Chrome）。
 
 ## database.py
 - SQLModel + SQLite。
