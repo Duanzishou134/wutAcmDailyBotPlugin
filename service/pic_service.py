@@ -16,31 +16,56 @@ class PicService:
             os.makedirs(self.pic_dir)
 
     async def get_pic_list(self) -> str:
-        """获取所有可用图片的列表文本"""
-        files = os.listdir(self.pic_dir)
-        images = [f for f in files if f.lower().endswith(('.jpg', '.png', '.jpeg', '.gif'))]
+        """获取所有可用图片的列表文本（仅返回最后一个'-'之前的名称）"""
+        images = self._get_images()
         if not images:
             return "目前没有任何图片。"
-        else:
-            img_list = "\n".join(images)
-            return f"可用的图片列表：\n{img_list}"
 
-    async def get_pic_path(self, pic_name: str) -> str | None:
-        """匹配 pic_name(-*).(jpg|jpeg|gif|png) 并随机返回一张图片路径"""
+        names = set()
+        for base, _ in images:
+            head = base.rsplit("-", 1)[0] if "-" in base else base
+            names.add(head)
+
+        img_list = "\n".join(sorted(names))
+        return f"可用的图片列表：\n{img_list}"
+
+    async def get_pic_list_by_prefix(self, prefix: str) -> str:
+        """获取指定前缀的图片列表（返回完整名称，不含扩展名）"""
+        images = self._get_images()
+        matches = [base for base, _ in images if base.startswith(prefix)]
+        if not matches:
+            return f"未找到以 {prefix} 为前缀的图片。"
+        img_list = "\n".join(sorted(matches))
+        return f"可用的图片列表：\n{img_list}"
+
+    async def get_pic_path(self, pic_name: str) -> tuple[str, str | list[str] | None]:
+        """按前缀规则匹配图片并返回结果"""
+        images = self._get_images()
+        candidates = [(base, path) for base, path in images if base.startswith(pic_name)]
+
+        if not candidates:
+            return "not_found", None
+
+        exact_dash = [(base, path) for base, path in candidates if base.startswith(f"{pic_name}-")]
+        if exact_dash:
+            return "image", random.choice(exact_dash)[1]
+
+        if len(candidates) == 1:
+            return "image", candidates[0][1]
+
+        conflict_names = sorted(base for base, _ in candidates)
+        return "conflict", conflict_names
+
+    def _get_images(self) -> list[tuple[str, str]]:
         exts = (".jpg", ".jpeg", ".gif", ".png")
-        candidates: list[str] = []
-
+        images: list[tuple[str, str]] = []
         for filename in os.listdir(self.pic_dir):
             lower = filename.lower()
             if not lower.endswith(exts):
                 continue
             base, _ = os.path.splitext(filename)
-            if base == pic_name or base.startswith(f"{pic_name}-"):
-                candidates.append(os.path.join(self.pic_dir, filename))
-
-        if not candidates:
-            return None
-        return random.choice(candidates)
+            images.append((base, os.path.join(self.pic_dir, filename)))
+        return images
 
     async def add_pic(self, pic_name: str, image: Image, add_suffix: bool) -> str:
         """将图片保存到 pic 目录，并返回结果提示文本"""

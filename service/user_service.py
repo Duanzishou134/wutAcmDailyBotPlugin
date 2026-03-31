@@ -76,5 +76,30 @@ class UserService:
             users = session.exec(statement).all()
             return users
 
+    async def get_user_info(self, qq: str) -> tuple[bool, dict | str]:
+        with Session(engine) as session:
+            statement = select(User).where(User.qq == qq)
+            user = session.exec(statement).first()
+            if not user or user.register_status != StatusConstant.FINISH:
+                return False, "暂未注册"
+
+        cf_info = await self.codeforces_utils.get_user_info(user.codeforces_name)
+        cf_rating = "未评级"
+        if cf_info is not None:
+            cf_rating = cf_info.get("rating", "未评级")
+        else:
+            cf_rating = "未获取"
+
+        solved_count = await self.codeforces_utils.get_solved_count(user.codeforces_name)
+        if solved_count is None:
+            solved_count = "未获取"
+
+        return True, {
+            "cf_name": user.codeforces_name,
+            "cf_rating": cf_rating,
+            "scores": user.rating,
+            "solved_count": solved_count,
+        }
+
 
 
