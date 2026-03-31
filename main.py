@@ -22,7 +22,7 @@ class MyPlugin(Star):
         self.user_service = UserService()
         self.daily_problem_service = DailyProblemService()
         self.pic_service = PicService()
-        self.info_template = self._load_info_template()
+        self.info_template = self._load_info_template("template.html")
         init_db()
 
 
@@ -143,7 +143,7 @@ class MyPlugin(Star):
         '''这里就是该指令的帮助说明，将会被 /help 或类似指令显示。'''
         yield event.plain_result(
         "这是秽土重生的盗版法老王，有以下几个简单功能\n"
-        "/register <your_codeforces_name> 绑定你的qq账号和codeforces账号\n"
+        "/register <codeforces_name> 绑定你的qq账号和codeforces账号\n"
         "/register finish 绑定完成\n"
         "/daily problem 查看每日一题\n"
         "/daily finish 完成每日一题\n"
@@ -153,6 +153,31 @@ class MyPlugin(Star):
         "/pic <pic_name> 发送指定图片\n"
         "/pic -list [pic_name] 查看图片列表\n"
         "/add_pic <pic_name> <pic> [-n | -no-suffix] 添加图片(回复图片也可)"
+        )
+
+    @filter.command("pic help")
+    async def pic_help(self, event: AstrMessageEvent):
+        '''这里就是该指令的帮助说明，将会被 /help 或类似指令显示。'''
+        yield event.plain_result(
+            "/pic <pic_name> 发送指定图片\n"
+            "/pic -list [pic_name] 查看图片列表\n"
+            "/add_pic <pic_name> <pic> [-n | -no-suffix] 添加图片(回复图片也可)"
+        )
+    @filter.command("help")
+    async def my_command(self, event: AstrMessageEvent):
+        '''这里就是该指令的帮助说明，将会被 /help 或类似指令显示。'''
+        yield event.plain_result(
+            "这是秽土重生的盗版法老王，有以下几个简单功能\n"
+            "/pic help 查看pic具体功能\n"
+            "/cf help 查看cf具体功能\n"
+            "/register <codeforces_name> "
+            "绑定你的qq账号和codeforces账号\n"
+            "/register finish 绑定完成\n"
+            "/daily problem 查看每日一题\n"
+            "/daily finish 完成每日一题\n"
+            "/rankist 查看每日一题积分榜(前十)\n"
+            "/info 查看当前用户信息(图片卡片)\n"
+            "/info -t 查看当前用户信息(文本)\n"
         )
 
     @filter.command("pic")
@@ -212,12 +237,11 @@ class MyPlugin(Star):
                         return item
         return None
 
-    def _load_info_template(self) -> str:
+    def _load_info_template(self, template_path: str) -> str:
         template_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "asserts",
-            "template.html",
+            template_path,
         )
         with open(template_path, "r", encoding="utf-8") as file:
             return file.read()
-
