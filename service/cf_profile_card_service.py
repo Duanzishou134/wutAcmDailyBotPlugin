@@ -1,49 +1,32 @@
 import os
-import time
+import base64
 from datetime import datetime, timedelta, timezone
 
 import httpx
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+
+from ..utils.html_render import render_template_to_image
 
 
 class CFProfileCardService:
     def __init__(self, plugin_dir: str):
         self._card_dir = os.path.join(plugin_dir, "data", "cards")
         os.makedirs(self._card_dir, exist_ok=True)
+        template_path = os.path.join(plugin_dir, "asserts", "cf_profile_card_template.html")
+        self._template = self._load_template(template_path)
 
-    async def render_profile_card(self, profile: dict, solved_count: int) -> tuple[str | None, str | None]:
-        width, height = 1100, 620
+    async def render_profile_card(
+        self,
+        profile: dict | None,
+        solved_count: int,
+        solved_rating_dist: list[dict] | None = None,
+    ) -> tuple[str | None, str | None]:
+        if not isinstance(profile, dict) or not profile:
+            return None, "empty profile data"
+
         rating = profile.get("rating")
         theme = self._rating_theme(rating)
-        bg_top = theme["bg_top"]
-        bg_bottom = theme["bg_bottom"]
         accent = theme["accent"]
-        accent_soft = theme["accent_soft"]
-
-        canvas = Image.new("RGB", (width, height), bg_top)
-        draw = ImageDraw.Draw(canvas)
-        for y in range(height):
-            ratio = y / max(1, height - 1)
-            r = int(bg_top[0] + (bg_bottom[0] - bg_top[0]) * ratio)
-            g = int(bg_top[1] + (bg_bottom[1] - bg_top[1]) * ratio)
-            b = int(bg_top[2] + (bg_bottom[2] - bg_top[2]) * ratio)
-            draw.line([(0, y), (width, y)], fill=(r, g, b))
-
-        draw.rounded_rectangle((14, 14, width - 14, height - 14), radius=16, fill=(255, 255, 255), outline=(226, 231, 241), width=2)
-        header_h = 146
-        draw.rounded_rectangle((14, 14, width - 14, 14 + header_h), radius=16, fill=(246, 249, 253), outline=(226, 231, 241), width=2)
-        draw.line((14, 14 + header_h, width - 14, 14 + header_h), fill=(226, 231, 241), width=2)
-        draw.line((658, 14 + header_h, 658, height - 14), fill=(234, 239, 247), width=2)
-        draw.ellipse((840, -80, 1220, 220), fill=accent_soft)
-
-        title_font = self._load_font(37)
-        badge_font = self._load_font(21, bold=True)
-        sub_font = self._load_font(23)
-        body_font = self._load_font(25, bold=True)
-        small_font = self._load_font(19)
-        tiny_font = self._load_font(15)
-        rating_bold_font = self._load_font(36, bold=True)
-        right_val_font = self._load_font(33, bold=True)
+        max_theme = self._rating_theme(self._safe_int(profile.get("maxRating")))
 
         handle = str(profile.get("handle", "unknown"))
         rank = str(profile.get("rank", "unrated"))
@@ -59,105 +42,44 @@ class CFProfileCardService:
         last_online = self._fmt_ts(profile.get("lastOnlineTimeSeconds", 0)) if profile.get("lastOnlineTimeSeconds") else "-"
         org_short = self._truncate(org, 36)
         country_city = self._truncate(f"{city}, {country}".strip(", "), 40)
+        avatar_data_url = await self._load_avatar_data_url(profile.get("titlePhoto"))
+        chart_bins, pie_gradient, solved_total = self._build_pie_chart_data(solved_rating_dist or [], solved_count)
 
-        avatar = await self._load_avatar(profile.get("titlePhoto"))
-        avatar = ImageOps.fit(avatar, (108, 108))
-        mask = Image.new("L", (108, 108), 0)
-        mdraw = ImageDraw.Draw(mask)
-        mdraw.ellipse((0, 0, 107, 107), fill=255)
-        canvas.paste(avatar, (40, 34), mask)
-        draw.ellipse((36, 30, 152, 146), outline=accent, width=4)
-
-        draw.text((170, 42), self._truncate(handle, 24), fill=accent, font=title_font)
-        badge_text = rank.upper()
-        badge_w = int(draw.textlength(badge_text, font=badge_font)) + 28
-        badge_x = 170
-        badge_y = 96
-        draw.rounded_rectangle((badge_x, badge_y, badge_x + badge_w, badge_y + 34), radius=18, fill=accent)
-        draw.text((badge_x + 14, badge_y + 5), badge_text, fill=(255, 255, 255), font=badge_font)
-
-        box_x0, box_y0, box_x1, box_y1 = 670, 38, 1060, 100
-        draw.rounded_rectangle((box_x0, box_y0, box_x1, box_y1), radius=30, fill=(255, 255, 255), outline=(200, 210, 226), width=2)
-        label = "Contest rating:"
-        label_x = box_x0 + 20
-        label_y = box_y0 + 18
-        draw.text((label_x, label_y), label, fill=(40, 57, 82), font=sub_font)
-        label_w = int(draw.textlength(label, font=sub_font))
-        score_x = label_x + label_w
-        score_y = box_y0 + 19
-        draw.text((score_x, score_y), rating_text, fill=accent, font=sub_font)
-        score_w = int(draw.textlength(rating_text, font=sub_font))
-        max_text = f"(max {max_rating})"
-        max_x = score_x + score_w + 6
-        max_y = box_y0 + 24
-        draw.text((max_x, max_y), max_text, fill=(95, 112, 142), font=tiny_font)
-        draw.text((170, 138), f"{country_city}  |  {org_short}", fill=(61, 79, 106), font=tiny_font)
-
-        lx0, lx1 = 40, 640
-        ly = 202
-        draw.text((lx0, ly), "RATING", fill=(90, 117, 153), font=tiny_font)
-        draw.text((lx1 - int(draw.textlength(rating_text, font=rating_bold_font)), ly - 12), rating_text, fill=accent, font=rating_bold_font)
-        draw.line((lx0, ly + 40, lx1, ly + 40), fill=(232, 237, 246), width=1)
-
-        draw.rounded_rectangle((lx0, ly + 56, lx1, ly + 144), radius=22, fill=self._mix_color((255, 255, 255), accent, 0.10))
-        max_theme = self._rating_theme(self._safe_int(max_rating))
-        max_accent = max_theme["accent"]
-        left_text = "Max rating: "
-        left_x = lx0 + 20
-        left_y = ly + 86
-        draw.text((left_x, left_y), left_text, fill=(43, 64, 95), font=small_font)
-        left_w = int(draw.textlength(left_text, font=small_font))
-        max_num = str(max_rating)
-        draw.text((left_x + left_w, left_y), max_num, fill=max_accent, font=small_font)
-        num_w = int(draw.textlength(max_num, font=small_font))
-        draw.text((left_x + left_w + num_w + 6, left_y), f"({max_rank})", fill=max_accent, font=small_font)
-
-        draw.text((lx0, ly + 170), "SOLVED", fill=(90, 117, 153), font=tiny_font)
-        draw.text((lx1 - int(draw.textlength(str(solved_count), font=body_font)), ly + 166), str(solved_count), fill=(25, 41, 68), font=body_font)
-        draw.line((lx0, ly + 210, lx1, ly + 210), fill=(232, 237, 246), width=1)
-
-        draw.rounded_rectangle((lx0, ly + 228, lx0 + 220, ly + 274), radius=23, fill=(241, 245, 252))
-        draw.text((lx0 + 20, ly + 242), f"Friend of: {friend_count}", fill=(30, 49, 78), font=small_font)
-        draw.rounded_rectangle((lx0 + 234, ly + 228, lx0 + 520, ly + 274), radius=23, fill=(241, 245, 252))
-        draw.text((lx0 + 254, ly + 242), f"Contribution: {contribution}", fill=(30, 49, 78), font=small_font)
-        draw.rounded_rectangle((lx0, ly + 288, lx0 + 520, ly + 334), radius=23, fill=(241, 245, 252))
-        draw.text((lx0 + 20, ly + 302), f"Last online: {last_online}", fill=(30, 49, 78), font=small_font)
-        draw.rounded_rectangle((lx0, ly + 346, lx0 + 520, ly + 392), radius=23, fill=(241, 245, 252))
-        draw.text((lx0 + 20, ly + 360), f"Registered: {reg_at}", fill=(30, 49, 78), font=small_font)
-
-        rx0, rx1 = 678, 1058
-        draw.rounded_rectangle((rx0, 182, rx1, 470), radius=26, fill=(250, 252, 255), outline=(232, 237, 246), width=2)
-        short_last_online = self._fmt_ts_short(profile.get("lastOnlineTimeSeconds", 0))
-        short_reg_at = self._fmt_ts_short(profile.get("registrationTimeSeconds", 0))
-        rows = [
-            ("USERNAME", handle),
-            ("RANK", rank),
-            ("RATING", rating_text),
-            ("LAST VISIT", short_last_online),
-            ("REGISTERED", short_reg_at),
-        ]
-        row_y = 214
-        for idx, (k, v) in enumerate(rows):
-            draw.text((rx0 + 24, row_y), k, fill=(93, 120, 155), font=tiny_font)
-            val_color = accent if k in {"RANK", "RATING", "USERNAME"} else (23, 38, 63)
-            v_text = self._truncate(v, 22)
-            use_font = right_val_font if k == "RATING" else small_font
-            v_w = int(draw.textlength(v_text, font=use_font))
-            val_x = max(rx0 + 185, rx1 - 24 - v_w)
-            val_y = row_y - 7 if k == "RATING" else row_y
-            draw.text((val_x, val_y), v_text, fill=val_color, font=use_font)
-            if idx != len(rows) - 1:
-                draw.line((rx0 + 20, row_y + 32, rx1 - 20, row_y + 32), fill=(235, 240, 248), width=1)
-            row_y += 50
-
-        draw.rounded_rectangle((rx0, 486, rx1, 560), radius=20, fill=(244, 247, 253))
-        draw.text((rx0 + 18, 513), f"Theme: {theme['name']}", fill=(112, 129, 157), font=tiny_font)
-        draw.text((rx0 + 214, 513), "Data: Codeforces API", fill=(112, 129, 157), font=tiny_font)
-
-        file_name = f"cf_info_{handle}_{int(time.time())}.png"
-        out_path = os.path.join(self._card_dir, file_name)
         try:
-            canvas.save(out_path, format="PNG")
+            html_data = {
+                "theme_name": theme["name"],
+                "accent": self._rgb_to_css(accent),
+                "accent_soft": self._rgb_to_css(theme["accent_soft"]),
+                "bg_top": self._rgb_to_css(theme["bg_top"]),
+                "bg_bottom": self._rgb_to_css(theme["bg_bottom"]),
+                "handle": self._truncate(handle, 24),
+                "rank": rank,
+                "rating_text": rating_text,
+                "max_rank": max_rank,
+                "max_rating": str(max_rating),
+                "max_accent": self._rgb_to_css(max_theme["accent"]),
+                "solved_count": str(solved_count),
+                "friend_count": str(friend_count),
+                "contribution": str(contribution),
+                "country_city": country_city,
+                "organization": org_short,
+                "last_online": last_online,
+                "registered": reg_at,
+                "short_last_online": self._fmt_ts_short(profile.get("lastOnlineTimeSeconds", 0)),
+                "short_registered": self._fmt_ts_short(profile.get("registrationTimeSeconds", 0)),
+                "avatar_data_url": avatar_data_url,
+                "solved_rating_bins": chart_bins,
+                "pie_gradient": pie_gradient,
+                "solved_total": solved_total,
+            }
+            out_path = await render_template_to_image(
+                self._template,
+                html_data,
+                width=1160,
+                height=680,
+                full_page=True,
+                image_type="png",
+            )
         except Exception as e:
             return None, str(e)
         return out_path, None
@@ -187,13 +109,12 @@ class CFProfileCardService:
             return s
         return s[: max(0, limit - 1)] + "…"
 
-    def _mix_color(self, c1: tuple[int, int, int], c2: tuple[int, int, int], alpha: float) -> tuple[int, int, int]:
-        a = max(0.0, min(1.0, alpha))
-        return (int(c1[0] * (1 - a) + c2[0] * a), int(c1[1] * (1 - a) + c2[1] * a), int(c1[2] * (1 - a) + c2[2] * a))
+    def _rgb_to_css(self, color: tuple[int, int, int]) -> str:
+        return f"rgb({color[0]}, {color[1]}, {color[2]})"
 
-    async def _load_avatar(self, photo_url: str | None) -> Image.Image:
+    async def _load_avatar_data_url(self, photo_url: str | None) -> str:
         if not photo_url:
-            return self._default_avatar()
+            return self._default_avatar_data_url()
         url = str(photo_url).strip()
         if url.startswith("//"):
             url = "https:" + url
@@ -201,36 +122,31 @@ class CFProfileCardService:
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.get(url)
             resp.raise_for_status()
-            from io import BytesIO
-            return Image.open(BytesIO(resp.content)).convert("RGB")
+            mime = resp.headers.get("content-type", "").split(";")[0].strip().lower()
+            if not mime.startswith("image/"):
+                mime = "image/jpeg"
+            encoded = base64.b64encode(resp.content).decode("ascii")
+            return f"data:{mime};base64,{encoded}"
         except Exception:
-            return self._default_avatar()
+            return self._default_avatar_data_url()
 
-    def _default_avatar(self) -> Image.Image:
-        img = Image.new("RGB", (170, 170), (39, 57, 112))
-        d = ImageDraw.Draw(img)
-        d.ellipse((28, 22, 142, 136), fill=(80, 105, 184))
-        d.rectangle((44, 104, 126, 168), fill=(80, 105, 184))
-        return img
+    def _default_avatar_data_url(self) -> str:
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">'
+            '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+            '<stop offset="0%" stop-color="#334155"/><stop offset="100%" stop-color="#1e293b"/>'
+            "</linearGradient></defs>"
+            '<rect width="220" height="220" fill="url(#g)"/>'
+            '<circle cx="110" cy="82" r="40" fill="#93c5fd"/>'
+            '<rect x="58" y="128" width="104" height="72" rx="36" fill="#93c5fd"/>'
+            "</svg>"
+        )
+        encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+        return f"data:image/svg+xml;base64,{encoded}"
 
-    def _load_font(self, size: int, bold: bool = False) -> ImageFont.ImageFont:
-        if bold:
-            candidates = [
-                "C:/Windows/Fonts/segoeuib.ttf",
-                "C:/Windows/Fonts/arialbd.ttf",
-                "C:/Windows/Fonts/msyhbd.ttc",
-                "C:/Windows/Fonts/msyh.ttc",
-                "C:/Windows/Fonts/segoeui.ttf",
-                "C:/Windows/Fonts/arial.ttf",
-            ]
-        else:
-            candidates = ["C:/Windows/Fonts/segoeui.ttf", "C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/msyh.ttc"]
-        for p in candidates:
-            try:
-                return ImageFont.truetype(p, size=size)
-            except Exception:
-                pass
-        return ImageFont.load_default()
+    def _load_template(self, template_path: str) -> str:
+        with open(template_path, "r", encoding="utf-8") as file:
+            return file.read()
 
     def _safe_int(self, v) -> int | None:
         try:
@@ -249,3 +165,51 @@ class CFProfileCardService:
             return "-"
         dt = datetime.fromtimestamp(int(ts), tz=timezone(timedelta(hours=8)))
         return dt.strftime("%Y-%m-%d %H:%M")
+
+    def _build_pie_chart_data(self, bins: list[dict], solved_count: int) -> tuple[list[dict], str, int]:
+        prepared: list[dict] = []
+        total = 0
+        for item in bins:
+            count = self._safe_int(item.get("count")) or 0
+            total += count
+            prepared.append(
+                {
+                    "label": str(item.get("label", "Unknown")),
+                    "color": str(item.get("color", "#94a3b8")),
+                    "count": count,
+                    "percent": "0.0",
+                }
+            )
+
+        if total <= 0:
+            total = max(0, self._safe_int(solved_count) or 0)
+
+        if not prepared:
+            prepared = [{"label": "No data", "color": "#cbd5e1", "count": total, "percent": "100.0"}]
+            return prepared, "#cbd5e1 0% 100%", total
+
+        if total <= 0:
+            for item in prepared:
+                item["percent"] = "0.0"
+            return prepared, "#e2e8f0 0% 100%", 0
+
+        segments: list[str] = []
+        cursor = 0.0
+        non_zero_exists = False
+        for item in prepared:
+            count = item["count"]
+            percent = (count / total) * 100
+            item["percent"] = f"{percent:.1f}"
+            if count <= 0:
+                continue
+            non_zero_exists = True
+            end = cursor + percent
+            segments.append(f"{item['color']} {cursor:.2f}% {end:.2f}%")
+            cursor = end
+
+        if not non_zero_exists:
+            return prepared, "#e2e8f0 0% 100%", total
+
+        if cursor < 100:
+            segments.append(f"#f8fafc {cursor:.2f}% 100%")
+        return prepared, ", ".join(segments), total

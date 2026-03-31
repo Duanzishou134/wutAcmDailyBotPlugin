@@ -70,7 +70,7 @@ class CFDataService:
             return contests, None
         return [], "; ".join(errors) if errors else "unknown error"
 
-    async def fetch_profile_bundle(self, handle: str) -> tuple[dict | None, int, str | None]:
+    async def fetch_profile_bundle(self, handle: str) -> tuple[dict | None, int, list[dict], str | None]:
         async with httpx.AsyncClient(timeout=20) as client:
             user_info_task = client.get(
                 "https://codeforces.com/api/user.info",
@@ -87,18 +87,18 @@ class CFDataService:
                 info_data = info_resp.json()
                 status_data = status_resp.json()
             except Exception as e:
-                return None, 0, str(e)
+                return None, 0, [], str(e)
 
         if info_data.get("status") != "OK":
-            return None, 0, info_data.get("comment", "Codeforces user.info returned non-OK status")
+            return None, 0, [], info_data.get("comment", "Codeforces user.info returned non-OK status")
         if status_data.get("status") != "OK":
-            return None, 0, status_data.get("comment", "Codeforces user.status returned non-OK status")
+            return None, 0, [], status_data.get("comment", "Codeforces user.status returned non-OK status")
 
         users = info_data.get("result", [])
         if not users:
-            return None, 0, "user not found"
+            return None, 0, [], "user not found"
 
-        solved_set = set()
+        solved_ratings: dict[str, int | None] = {}
         for sub in status_data.get("result", []):
             if sub.get("verdict") != "OK":
                 continue
@@ -107,9 +107,72 @@ class CFDataService:
             idx = problem.get("index")
             if cid is None or not idx:
                 continue
-            solved_set.add(f"{cid}{idx}")
+            key = f"{cid}{idx}"
+            rating = self._safe_int(problem.get("rating"))
+            if key not in solved_ratings:
+                solved_ratings[key] = rating
+            elif solved_ratings[key] is None and rating is not None:
+                solved_ratings[key] = rating
 
-        return users[0], len(solved_set), None
+        solved_dist = self._build_solved_rating_distribution(list(solved_ratings.values()))
+
+        profile = users[0]
+        if not isinstance(profile, dict):
+            return None, 0, [], "invalid profile payload"
+
+        return profile, len(solved_ratings), solved_dist, None
+
+    def _build_solved_rating_distribution(self, ratings: list[int | None]) -> list[dict]:
+        buckets = [
+            {"id": "unrated", "label": "Unrated", "color": "#9ca3af", "min": None, "max": None},
+            {"id": "lt1200", "label": "<1200", "color": "#808080", "min": 0, "max": 1199},
+            {"id": "1200_1399", "label": "1200-1399", "color": "#00a000", "min": 1200, "max": 1399},
+            {"id": "1400_1599", "label": "1400-1599", "color": "#03a89e", "min": 1400, "max": 1599},
+            {"id": "1600_1899", "label": "1600-1899", "color": "#004dcc", "min": 1600, "max": 1899},
+            {"id": "1900_2099", "label": "1900-2099", "color": "#aa00aa", "min": 1900, "max": 2099},
+            {"id": "2100_2399", "label": "2100-2399", "color": "#ff8c00", "min": 2100, "max": 2399},
+            {"id": "ge2400", "label": ">=2400", "color": "#d63131", "min": 2400, "max": None},
+        ]
+        counts = {b["id"]: 0 for b in buckets}
+
+        for rating in ratings:
+            bid = self._bucket_id_by_rating(rating)
+            counts[bid] += 1
+
+        result: list[dict] = []
+        for b in buckets:
+            result.append(
+                {
+                    "id": b["id"],
+                    "label": b["label"],
+                    "color": b["color"],
+                    "count": counts[b["id"]],
+                }
+            )
+        return result
+
+    def _bucket_id_by_rating(self, rating: int | None) -> str:
+        if rating is None:
+            return "unrated"
+        if rating < 1200:
+            return "lt1200"
+        if rating < 1400:
+            return "1200_1399"
+        if rating < 1600:
+            return "1400_1599"
+        if rating < 1900:
+            return "1600_1899"
+        if rating < 2100:
+            return "1900_2099"
+        if rating < 2400:
+            return "2100_2399"
+        return "ge2400"
+
+    def _safe_int(self, value) -> int | None:
+        try:
+            return int(value)
+        except Exception:
+            return None
 
     async def _fetch_codeforces_contests(self) -> tuple[list[dict], str | None]:
         url = "https://codeforces.com/api/contest.list?gym=false"
