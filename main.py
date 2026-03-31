@@ -82,3 +82,22 @@ class MyPlugin(Star):
         for user in result:
             result_str += f"{user.codeforces_name}: {user.rating}\n"
         yield event.plain_result(f"{result_str}")
+
+    @filter.command("daily change")
+    async def daily_change(self, event: AstrMessageEvent):
+        qq = event.get_sender_id()
+        result = await self.daily_problem_service.daily_change(qq)
+        yield event.plain_result(f"{result}")
+
+
+    @filter.command("help")
+    async def my_command(self, event: AstrMessageEvent):
+        '''这里就是该指令的帮助说明，将会被 /help 或类似指令显示。'''
+        yield event.plain_result(
+        "这是秽土重生的盗版法老王，有以下几个简单功能\n"
+        "/register <your_codeforces_name> 绑定你的qq账号和codeforces账号\n"
+        "/register finish 绑定完成\n"
+        "/daily problem 查看每日一题\n"
+        "/daily finish 完成每日一题\n"
+        "/rankist 查看每日一题积分榜(前十)"
+        )

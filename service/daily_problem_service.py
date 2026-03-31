@@ -35,7 +35,6 @@ class DailyProblemService:
             rating = problem.get("rating", 0)
             daily_problem.rating = rating
 
-            tags_str = ", ".join(problem.get("tags", []))
             url = f"https://codeforces.com/problemset/problem/{contest_id}/{index}"
             daily_problem.url = url
 
@@ -53,8 +52,8 @@ class DailyProblemService:
             statement = select(DailyProblem).where(DailyProblem.daily_date == date.today())
             daily_problem = session.exec(statement).first()
 
-
-
+            if not daily_problem:
+                return "未检测到有效提交"
 
             if not user or user.register_status != StatusConstant.FINISH:
                 return "你还未绑定账号，请绑定你的codeforces账号后再提交吧"
@@ -92,3 +91,34 @@ class DailyProblemService:
                 return f"恭喜你完成了今天的每日一题, 获得{daily_problem.rating}积分, 你当前的积分为{user.rating}"
             else:
                 return "未检测到有效提交"
+
+    async def daily_change(self, qq):
+        with Session(engine) as session:
+
+            statement = select(DailyProblem).where(DailyProblem.daily_date == date.today())
+            daily_problem = session.exec(statement).first()
+            if not daily_problem:
+                url = await self.get_daily_problem()
+                return f"已更改每日一题为{url}"
+
+            problem = await self.codeforces_utils.get_random_problem()
+
+            contest_id = problem.get("contestId")
+            daily_problem.contest_id = contest_id
+
+            index = problem.get("index")
+            daily_problem.problem_index = index
+
+            name = problem.get("name")
+            daily_problem.problem_name = name
+
+            rating = problem.get("rating", 0)
+            daily_problem.rating = rating
+
+            tags_str = ", ".join(problem.get("tags", []))
+            url = f"https://codeforces.com/problemset/problem/{contest_id}/{index}"
+            daily_problem.url = url
+
+            session.add(daily_problem)
+            session.commit()
+            return f"已更改每日一题为{url}"
