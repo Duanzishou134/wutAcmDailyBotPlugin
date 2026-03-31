@@ -25,6 +25,48 @@ class CodeforcesUtils:
                 print(f"CF API错误: {e}")
                 return None
 
+    async def get_user_info(self, codeforces_name: str) -> Optional[Dict]:
+        """获取用户信息"""
+        url = f"{Config.CF_API_URL}/user.info"
+        params = {"handles": codeforces_name}
+
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(url, params=params) as resp:
+                    data = await resp.json()
+                    if data.get("status") == "OK" and data.get("result"):
+                        return data["result"][0]
+                    return None
+            except Exception as e:
+                print(f"CF API错误: {e}")
+                return None
+
+    async def get_solved_count(self, codeforces_name: str) -> Optional[int]:
+        """获取用户已解决题目数量（去重后的 OK 提交）"""
+        url = f"{Config.CF_API_URL}/user.status"
+        params = {"handle": codeforces_name, "from": 1, "count": 10000}
+
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(url, params=params) as resp:
+                    data = await resp.json()
+                    if data.get("status") != "OK":
+                        return None
+                    solved = set()
+                    for sub in data.get("result", []):
+                        if sub.get("verdict") != "OK":
+                            continue
+                        problem = sub.get("problem", {})
+                        contest_id = sub.get("contestId")
+                        index = problem.get("index")
+                        if contest_id is None or index is None:
+                            continue
+                        solved.add((contest_id, index))
+                    return len(solved)
+            except Exception as e:
+                print(f"CF API错误: {e}")
+                return None
+
 
     async def check_submission(
             self,

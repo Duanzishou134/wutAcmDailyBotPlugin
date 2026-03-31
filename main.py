@@ -91,6 +91,21 @@ class MyPlugin(Star):
         result = await self.daily_problem_service.daily_change(qq)
         yield event.plain_result(f"{result}")
 
+    @filter.command("info")
+    async def info(self, event: AstrMessageEvent):
+        qq = event.get_sender_id()
+        success, result = await self.user_service.get_user_info(qq)
+        if not success:
+            yield event.plain_result(result)
+            return
+        response = (
+            f"CF用户: {result['cf_name']}\n"
+            f"CF Rating: {result['cf_rating']}\n"
+            f"当前积分: {result['scores']}\n"
+            f"CF 做题数量: {result['solved_count']}"
+        )
+        yield event.plain_result(response)
+
 
     @filter.command("help")
     async def my_command(self, event: AstrMessageEvent):
@@ -102,6 +117,7 @@ class MyPlugin(Star):
         "/daily problem 查看每日一题\n"
         "/daily finish 完成每日一题\n"
         "/rankist 查看每日一题积分榜(前十)\n"
+        "/info 查看当前用户信息\n"
         "/pic <pic_name> 发送指定图片\n"
         "/pic -list [pic_name] 查看图片列表\n"
         "/add_pic <pic_name> <pic> [-n | -no-suffix] 添加图片(回复图片也可)"

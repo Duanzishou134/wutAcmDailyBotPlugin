@@ -6,6 +6,7 @@
 - 账号绑定：/register 与 /register finish。
 - 每日一题：/daily problem、/daily finish、/daily change。
 - 积分榜：/rankist（前十）。
+- 用户信息：/info。
 - 图片管理：/pic、/add_pic。
 
 ## 指令一览
@@ -15,6 +16,7 @@
 - /daily finish
 - /daily change
 - /rankist
+- /info
 - /pic <pic_name>
 - /pic -list [pic_name]
 - /add_pic <pic_name> <pic> [-n | -no-suffix]
@@ -26,5 +28,4 @@
 - pojo：数据模型。
 
 ## 正在规划的功能
-- \info 指令：提供用户信息查询。
-  - 显示绑定的 codeforces 账号、当前积分.
+- /info 输出图片而非文本。

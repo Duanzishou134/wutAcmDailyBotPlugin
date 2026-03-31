@@ -6,12 +6,14 @@
   - /register 与 /register finish 账号绑定流程。
   - /daily problem /daily finish /daily change 每日一题流程。
   - /rankist 积分榜（前十）。
+  - /info 用户信息查询。
   - /pic /add_pic 图片功能。
 
 ## service/user_service.py
 - 注册起始：写入用户与注册状态，记录 start_time。
 - 注册完成：检查 2 分钟有效期，异步校验 CF 编译错误提交。
 - 排行榜：按 rating 降序取前十。
+- 用户信息：查询本地绑定信息并聚合 CF 用户信息与做题数量。
 
 ## service/daily_problem_service.py
 - 每日一题：当天有记录则复用，否则从 CF 题库随机抽题并落库。
@@ -26,6 +28,8 @@
 
 ## utils/codeforces_utils.py
 - CF API：user.status 与 problemset.problems。
+- 用户信息：user.info。
+- 做题统计：拉取提交并统计去重的 OK 数量。
 - 校验逻辑：匹配 contestId/index、判定 verdict。
 - 随机题：按 rating 与标签过滤。
 
