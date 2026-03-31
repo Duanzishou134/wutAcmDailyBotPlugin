@@ -2,12 +2,12 @@ from datetime import time
 import random
 import os
 
-from astrbot.api.event import filter, AstrMessageEvent
-from astrbot.api.message_components import Image, Reply
-from astrbot.api.star import Context, Star, register
-from mammoth.results import success
-from sqlalchemy.testing.provision import create_db
-from sqlmodel import Session, select
+from astrbot.api.event import filter, AstrMessageEvent # type: ignore
+from astrbot.api.message_components import Image, Reply # type: ignore
+from astrbot.api.star import Context, Star, register # type: ignore
+from mammoth.results import success # type: ignore
+from sqlalchemy.testing.provision import create_db # type: ignore
+from sqlmodel import Session, select # type: ignore
 
 from .pojo import User
 from .service import UserService, DailyProblemService, PicService, CFDataService, CFProfileCardService
@@ -20,6 +20,7 @@ from .database import engine, init_db
 @register("wut_acm_plugin", "dzs mty lc", "三条区开发的wut推题波特", "1.0.0")
 class MyPlugin(Star):
     def __init__(self, context: Context):
+        """初始化服务与模板，并准备数据库。"""
         super().__init__(context)
         self.user_service = UserService()
         self.daily_problem_service = DailyProblemService()
@@ -33,12 +34,13 @@ class MyPlugin(Star):
     # 指令必须使用 @filter.command 装饰器
     @filter.command("hello")
     async def hello_world(self, event: AstrMessageEvent):
+        """测试指令：向发送者打招呼。"""
         sender_name = event.get_sender_name()
         yield event.plain_result(f"Hello, {sender_name}!")
 
     @filter.command("register")
     async def register_command(self, event: AstrMessageEvent):
-        """处理 /register 命令"""
+        """处理 /register 绑定与验证流程。"""
         args = event.get_message_str().split()
         if not args or len(args) != 2:
             yield event.plain_result("用法: /register <your_codeforces_name>")
@@ -74,17 +76,20 @@ class MyPlugin(Star):
 
     @filter.command("daily problem")
     async def daily_problem(self, event: AstrMessageEvent):
+        """返回今日每日一题链接。"""
         daily_url = await self.daily_problem_service.get_daily_problem()
         yield event.plain_result(f"今天的每日一题是:{daily_url}")
 
     @filter.command("daily finish")
     async def daily_finish(self, event: AstrMessageEvent):
+        """标记当前用户完成每日一题。"""
         qq = event.get_sender_id()
         result = await self.daily_problem_service.daily_finish(qq)
         yield event.plain_result(f"{result}")
 
     @filter.command("rank")
     async def rank(self, event: AstrMessageEvent):
+        """展示积分榜。"""
         qq = event.get_sender_id()
         result = await self.user_service.get_rankist()
         result_str = "积分榜\n"
@@ -94,12 +99,14 @@ class MyPlugin(Star):
 
     @filter.command("daily change")
     async def daily_change(self, event: AstrMessageEvent):
+        """申请更换每日一题。"""
         qq = event.get_sender_id()
         result = await self.daily_problem_service.daily_change(qq)
         yield event.plain_result(f"{result}")
 
     @filter.command("info")
     async def info(self, event: AstrMessageEvent):
+        """展示当前用户信息（卡片或文本）。"""
         args = event.get_message_str().split()
         text_only = len(args) >= 2 and args[1] == "-t"
         qq = event.get_sender_id()
@@ -144,14 +151,17 @@ class MyPlugin(Star):
 
     @filter.command("pic help")
     async def pic_help(self, event: AstrMessageEvent):
+        """输出图片指令帮助。"""
         '''这里就是该指令的帮助说明，将会被 /help 或类似指令显示。'''
         yield event.plain_result(
             "/pic <pic_name> 发送指定图片\n"
             "/pic -list [pic_name] 查看图片列表\n"
             "/add_pic <pic_name> <pic> [-n | -no-suffix] 添加图片(回复图片也可)"
         )
+    
     @filter.command("help")
     async def help(self, event: AstrMessageEvent):
+        """输出插件总帮助说明。"""
         '''这里就是该指令的帮助说明，将会被 /help 或类似指令显示。'''
         yield event.plain_result(
             "这是秽土重生的盗版法老王，有以下几个简单功能\n"
@@ -169,6 +179,7 @@ class MyPlugin(Star):
 
     @filter.command("pic")
     async def send_pic(self, event: AstrMessageEvent):
+        """发送指定图片或列出图片列表。"""
         args = event.get_message_str().split()
         if len(args) < 2:
             yield event.plain_result("用法: /pic <pic_name> | /pic list [pic_name]")
@@ -196,6 +207,7 @@ class MyPlugin(Star):
 
     @filter.command("add_pic")
     async def add_pic(self, event: AstrMessageEvent):
+        """新增图片到图库，支持回复图片。"""
         args = event.get_message_str().split()
         if len(args) < 2:
             yield event.plain_result("用法: /add_pic <pic_name> <pic> [-n | -no-suffix]")
@@ -215,6 +227,7 @@ class MyPlugin(Star):
 
     @filter.command("cf")
     async def cf_root(self, event: AstrMessageEvent):
+        """展示 /cf 根指令的用法提示。"""
         if event.message_str.strip() not in {"/cf", "cf"}:
             return
         yield event.plain_result(
@@ -226,10 +239,12 @@ class MyPlugin(Star):
 
     @filter.command_group("cf")
     def cf_group(self):
+        """CF 指令组入口。"""
         """CF command group"""
 
     @cf_group.command("random")
     async def cf_random(self, event: AstrMessageEvent):
+        """按筛选条件随机选择一道 CF 题目。"""
         text = event.message_str.strip()
         rating_low, rating_high, tags = parse_random_args(text)
         problems, err = await self.cf_data_service.load_problemset()
@@ -265,6 +280,7 @@ class MyPlugin(Star):
 
     @cf_group.command("contests")
     async def cf_contests(self, event: AstrMessageEvent, count: str = ""):
+        """列出近期比赛信息。"""
         n = 8
         if count.strip().isdigit():
             n = max(1, min(20, int(count.strip())))
@@ -285,17 +301,25 @@ class MyPlugin(Star):
 
     @cf_group.command("info")
     async def cf_info(self, event: AstrMessageEvent, handle: str = ""):
+        """生成指定 CF 用户的资料卡片。"""
         handle = handle.strip()
         if not handle:
             yield event.plain_result("Usage: /cf info <handle>")
             return
 
-        profile, solved_count, err = await self.cf_data_service.fetch_profile_bundle(handle)
+        profile, solved_count, solved_rating_dist, err = await self.cf_data_service.fetch_profile_bundle(handle)
         if err:
             yield event.plain_result(f"Fetch user info failed: {err}")
             return
+        if not isinstance(profile, dict) or not profile:
+            yield event.plain_result("Fetch user info failed: empty profile data")
+            return
 
-        card_path, render_err = await self.cf_profile_card_service.render_profile_card(profile, solved_count)
+        card_path, render_err = await self.cf_profile_card_service.render_profile_card(
+            profile,
+            solved_count,
+            solved_rating_dist,
+        )
         if render_err:
             yield event.plain_result(f"Render card failed: {render_err}")
             return
@@ -307,6 +331,7 @@ class MyPlugin(Star):
 
     @cf_group.command("help")
     async def cf_help(self, event: AstrMessageEvent, topic: str = ""):
+        """输出 CF 功能帮助或标签列表。"""
         t = topic.strip().lower()
         if t in {"tags", "tag"}:
             problems, err = await self.cf_data_service.load_problemset()
@@ -355,6 +380,7 @@ class MyPlugin(Star):
         )
 
     def _extract_image_from_event(self, event: AstrMessageEvent) -> Image | None:
+        """从消息或回复链中提取图片组件。"""
         messages = event.get_messages()
         for comp in messages:
             if isinstance(comp, Image):
@@ -368,6 +394,7 @@ class MyPlugin(Star):
         return None
 
     def _safe_remove_file(self, path: str | None) -> None:
+        """安全删除临时文件，忽略异常。"""
         if not path:
             return
         try:
@@ -377,6 +404,7 @@ class MyPlugin(Star):
             pass
 
     def _load_info_template(self, template_path: str) -> str:
+        """读取用户信息卡片的 HTML 模板。"""
         template_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "asserts",
