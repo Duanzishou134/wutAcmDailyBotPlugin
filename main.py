@@ -225,17 +225,6 @@ class MyPlugin(Star):
         result = await self.pic_service.add_pic(pic_name, image, add_suffix=not no_suffix)
         yield event.plain_result(result)
 
-    @filter.command("cf")
-    async def cf_root(self, event: AstrMessageEvent):
-        """展示 /cf 根指令的用法提示。"""
-        if event.message_str.strip() not in {"/cf", "cf"}:
-            return
-        yield event.plain_result(
-            "Usage: /cf help\n"
-            "Usage: /cf random [rating] [tag]\n"
-            "Usage: /cf contests [count]\n"
-            "Usage: /cf info <handle>"
-        )
 
     @filter.command_group("cf")
     def cf_group(self):
