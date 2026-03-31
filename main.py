@@ -101,7 +101,10 @@ class MyPlugin(Star):
         "/register finish 绑定完成\n"
         "/daily problem 查看每日一题\n"
         "/daily finish 完成每日一题\n"
-        "/rankist 查看每日一题积分榜(前十)"
+        "/rankist 查看每日一题积分榜(前十)\n"
+        "/pic <pic_name> 发送指定图片\n"
+        "/pic -list 查看图片列表\n"
+        "/add_pic <pic_name> <pic> [-n | -no-suffix] 添加图片(回复图片也可)"
         )
 
     @filter.command("pic")
