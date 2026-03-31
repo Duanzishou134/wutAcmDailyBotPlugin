@@ -1,0 +1,56 @@
+# Python bytecode/cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test/coverage artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# Type checker/linter caches
+.mypy_cache/
+.pytype/
+.pyre/
+.ruff_cache/
+
+# IDE/editor settings
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local env/config secrets
+.env
+.env.*
+config/*.local.*
+config/*.secret.*
+
+# Local databases
+*.db
+cf_bot.db
+
+# Generic cache directory
+.cache/
+
+pic/

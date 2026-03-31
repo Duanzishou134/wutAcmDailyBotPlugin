@@ -12,4 +12,4 @@ def init_db():
     SQLModel.metadata.create_all(engine)
 
 # 你也可以保留直接调用，但建议在插件初始化时调用一次
-# init_db()
+init_db()

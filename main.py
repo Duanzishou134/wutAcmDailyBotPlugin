@@ -1,13 +1,14 @@
 from datetime import time
 
 from astrbot.api.event import filter, AstrMessageEvent
+from astrbot.api.message_components import Image, Reply
 from astrbot.api.star import Context, Star, register
 from mammoth.results import success
 from sqlalchemy.testing.provision import create_db
 from sqlmodel import Session, select
 
 from .pojo import User
-from .service import UserService, DailyProblemService
+from .service import UserService, DailyProblemService, PicService
 from .database import engine, init_db
 
 
@@ -18,6 +19,7 @@ class MyPlugin(Star):
         super().__init__(context)
         self.user_service = UserService()
         self.daily_problem_service = DailyProblemService()
+        self.pic_service = PicService()
         init_db()
 
 
@@ -82,3 +84,48 @@ class MyPlugin(Star):
         for user in result:
             result_str += f"{user.codeforces_name}: {user.rating}\n"
         yield event.plain_result(f"{result_str}")
+
+    @filter.command("pic")
+    async def send_pic(self, event: AstrMessageEvent, pic_name: str):
+        if pic_name == "-list":
+            result = await self.pic_service.get_pic_list()
+            yield event.plain_result(result)
+            return
+            
+        pic_path = await self.pic_service.get_pic_path(pic_name)
+        if pic_path:
+            yield event.image_result(pic_path)
+        else:
+            yield event.plain_result(f"图片 {pic_name} 不存在")
+
+    @filter.command("add_pic")
+    async def add_pic(self, event: AstrMessageEvent):
+        args = event.get_message_str().split()
+        if len(args) < 2:
+            yield event.plain_result("用法: /add_pic <pic_name> <pic> [-n | -no-suffix]")
+            return
+
+        pic_name = args[1]
+        flags = {arg for arg in args[2:] if arg.startswith("-")}
+        no_suffix = "-n" in flags or "-no-suffix" in flags
+
+        image = self._extract_image_from_event(event)
+        if not image:
+            yield event.plain_result("未检测到图片，请发送图片或通过回复图片消息使用 /add_pic <pic_name>。")
+            return
+
+        result = await self.pic_service.add_pic(pic_name, image, add_suffix=not no_suffix)
+        yield event.plain_result(result)
+
+    def _extract_image_from_event(self, event: AstrMessageEvent) -> Image | None:
+        messages = event.get_messages()
+        for comp in messages:
+            if isinstance(comp, Image):
+                return comp
+
+        for comp in messages:
+            if isinstance(comp, Reply) and comp.chain:
+                for item in comp.chain:
+                    if isinstance(item, Image):
+                        return item
+        return None

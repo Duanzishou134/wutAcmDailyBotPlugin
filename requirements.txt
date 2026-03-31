@@ -1,0 +1,2 @@
+sqlmodel>=0.0.16
+sqlalchemy>=2.0
