@@ -20,8 +20,8 @@
 
 ## service/pic_service.py
 - 图片目录：确保 pic 目录存在。
-- 图片列表：过滤 jpg/png/jpeg/gif。
-- 图片匹配：支持 pic_name 与 pic_name-* 的随机返回。
+- 图片列表：/pic -list 仅返回最后一个 '-' 前的名称；支持前缀过滤。
+- 图片匹配：前缀匹配；若精确前缀后跟 '-' 则随机返回，否则单个返回，多条提示冲突。
 - 图片添加：支持自动后缀或固定名；限制 5MB。
 
 ## utils/codeforces_utils.py

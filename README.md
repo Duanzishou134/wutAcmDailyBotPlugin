@@ -16,7 +16,7 @@
 - /daily change
 - /rankist
 - /pic <pic_name>
-- /pic -list
+- /pic -list [pic_name]
 - /add_pic <pic_name> <pic> [-n | -no-suffix]
 
 ## 目录说明
@@ -27,3 +27,4 @@
 
 ## 正在规划的功能
 - \info 指令：提供用户信息查询。
+  - 显示绑定的 codeforces 账号、当前积分.

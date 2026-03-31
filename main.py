@@ -103,20 +103,32 @@ class MyPlugin(Star):
         "/daily finish 完成每日一题\n"
         "/rankist 查看每日一题积分榜(前十)\n"
         "/pic <pic_name> 发送指定图片\n"
-        "/pic -list 查看图片列表\n"
+        "/pic -list [pic_name] 查看图片列表\n"
         "/add_pic <pic_name> <pic> [-n | -no-suffix] 添加图片(回复图片也可)"
         )
 
     @filter.command("pic")
-    async def send_pic(self, event: AstrMessageEvent, pic_name: str):
-        if pic_name == "-list":
-            result = await self.pic_service.get_pic_list()
+    async def send_pic(self, event: AstrMessageEvent):
+        args = event.get_message_str().split()
+        if len(args) < 2:
+            yield event.plain_result("用法: /pic <pic_name> | /pic -list [pic_name]")
+            return
+
+        if args[1] == "-list":
+            if len(args) >= 3:
+                result = await self.pic_service.get_pic_list_by_prefix(args[2])
+            else:
+                result = await self.pic_service.get_pic_list()
             yield event.plain_result(result)
             return
-            
-        pic_path = await self.pic_service.get_pic_path(pic_name)
-        if pic_path:
-            yield event.image_result(pic_path)
+
+        pic_name = args[1]
+        status, payload = await self.pic_service.get_pic_path(pic_name)
+        if status == "image":
+            yield event.image_result(payload)
+        elif status == "conflict":
+            conflict_list = "\n".join(payload)
+            yield event.plain_result(f"存在冲突，请指名图片名:\n{conflict_list}")
         else:
             yield event.plain_result(f"图片 {pic_name} 不存在")
 
