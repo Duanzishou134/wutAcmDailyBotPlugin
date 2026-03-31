@@ -71,7 +71,10 @@ class UserService:
 
     async def get_rankist(self):
         with Session(engine) as session:
-            statement = select(User).order_by(desc(User.rating)).limit(10)
+
+            statement = select(User).where(User.register_status == StatusConstant.FINISH).order_by(desc(User.rating)).limit(10)
             users = session.exec(statement).all()
             return users
+
+
 
