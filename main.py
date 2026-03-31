@@ -220,3 +220,4 @@ class MyPlugin(Star):
         )
         with open(template_path, "r", encoding="utf-8") as file:
             return file.read()
+
