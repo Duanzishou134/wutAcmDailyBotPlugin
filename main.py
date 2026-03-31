@@ -138,22 +138,6 @@ class MyPlugin(Star):
             yield event.plain_result(f"图片渲染失败，已返回文本信息:\n{response}")
 
 
-    @filter.command("help")
-    async def my_command(self, event: AstrMessageEvent):
-        '''这里就是该指令的帮助说明，将会被 /help 或类似指令显示。'''
-        yield event.plain_result(
-        "这是秽土重生的盗版法老王，有以下几个简单功能\n"
-        "/register <codeforces_name> 绑定你的qq账号和codeforces账号\n"
-        "/register finish 绑定完成\n"
-        "/daily problem 查看每日一题\n"
-        "/daily finish 完成每日一题\n"
-        "/rankist 查看每日一题积分榜(前十)\n"
-        "/info 查看当前用户信息(图片卡片)\n"
-        "/info -t 查看当前用户信息(文本)\n"
-        "/pic <pic_name> 发送指定图片\n"
-        "/pic -list [pic_name] 查看图片列表\n"
-        "/add_pic <pic_name> <pic> [-n | -no-suffix] 添加图片(回复图片也可)"
-        )
 
     @filter.command("pic help")
     async def pic_help(self, event: AstrMessageEvent):
@@ -164,7 +148,7 @@ class MyPlugin(Star):
             "/add_pic <pic_name> <pic> [-n | -no-suffix] 添加图片(回复图片也可)"
         )
     @filter.command("help")
-    async def my_command(self, event: AstrMessageEvent):
+    async def help(self, event: AstrMessageEvent):
         '''这里就是该指令的帮助说明，将会被 /help 或类似指令显示。'''
         yield event.plain_result(
             "这是秽土重生的盗版法老王，有以下几个简单功能\n"
