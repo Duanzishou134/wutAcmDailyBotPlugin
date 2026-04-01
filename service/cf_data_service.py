@@ -82,21 +82,35 @@ class CFDataService:
             )
             try:
                 info_resp, status_resp = await asyncio.gather(user_info_task, user_status_task)
-                info_resp.raise_for_status()
-                status_resp.raise_for_status()
-                info_data = info_resp.json()
-                status_data = status_resp.json()
             except Exception as e:
                 return None, 0, [], str(e)
 
+        # Unknown handle on Codeforces may return HTTP 400.
+        if info_resp.status_code == 400 or status_resp.status_code == 400:
+            return None, 0, [], "未找到该用户"
+
+        try:
+            info_resp.raise_for_status()
+            status_resp.raise_for_status()
+            info_data = info_resp.json()
+            status_data = status_resp.json()
+        except Exception as e:
+            return None, 0, [], str(e)
+
         if info_data.get("status") != "OK":
-            return None, 0, [], info_data.get("comment", "Codeforces user.info returned non-OK status")
+            comment = str(info_data.get("comment", ""))
+            if "not found" in comment.lower():
+                return None, 0, [], "未找到该用户"
+            return None, 0, [], comment or "Codeforces user.info returned non-OK status"
         if status_data.get("status") != "OK":
-            return None, 0, [], status_data.get("comment", "Codeforces user.status returned non-OK status")
+            comment = str(status_data.get("comment", ""))
+            if "not found" in comment.lower():
+                return None, 0, [], "未找到该用户"
+            return None, 0, [], comment or "Codeforces user.status returned non-OK status"
 
         users = info_data.get("result", [])
         if not users:
-            return None, 0, [], "user not found"
+            return None, 0, [], "未找到该用户"
 
         solved_ratings: dict[str, int | None] = {}
         for sub in status_data.get("result", []):

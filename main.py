@@ -238,7 +238,7 @@ class MyPlugin(Star):
         rating_low, rating_high, tags = parse_random_args(text)
         problems, err = await self.cf_data_service.load_problemset()
         if err:
-            yield event.plain_result(f"Fetch problemset failed: {err}")
+            yield event.plain_result("获取题库失败，请稍后重试")
             return
 
         filtered = []
@@ -260,7 +260,7 @@ class MyPlugin(Star):
             filtered.append(p)
 
         if not filtered:
-            yield event.plain_result("No problem found under current filters.")
+            yield event.plain_result("未找到符合条件的题目")
             return
 
         chosen = random.choice(filtered)
@@ -276,13 +276,13 @@ class MyPlugin(Star):
 
         contests, err = await self.cf_data_service.load_upcoming_contests()
         if err:
-            yield event.plain_result(f"Fetch contests failed: {err}")
+            yield event.plain_result("获取比赛信息失败，请稍后重试")
             return
         if not contests:
-            yield event.plain_result("No upcoming contests found.")
+            yield event.plain_result("未找到近期比赛")
             return
 
-        lines = ["Upcoming contests:"]
+        lines = ["近期比赛："]
         for idx, c in enumerate(contests[:n], start=1):
             start_local = self.cf_data_service.fmt_ts(c["start_ts"])
             lines.append(f"{idx}. [{c['site']}] {c['name']} | {start_local} | {c['url']}")
@@ -293,15 +293,15 @@ class MyPlugin(Star):
         """生成指定 CF 用户的资料卡片。"""
         handle = handle.strip()
         if not handle:
-            yield event.plain_result("Usage: /cf info <handle>")
+            yield event.plain_result("用法：/cf info <handle>")
             return
 
         profile, solved_count, solved_rating_dist, err = await self.cf_data_service.fetch_profile_bundle(handle)
         if err:
-            yield event.plain_result(f"Fetch user info failed: {err}")
+            yield event.plain_result(str(err))
             return
         if not isinstance(profile, dict) or not profile:
-            yield event.plain_result("Fetch user info failed: empty profile data")
+            yield event.plain_result("查询用户信息失败，请稍后重试")
             return
 
         card_path, render_err = await self.cf_profile_card_service.render_profile_card(
@@ -310,7 +310,7 @@ class MyPlugin(Star):
             solved_rating_dist,
         )
         if render_err:
-            yield event.plain_result(f"Render card failed: {render_err}")
+            yield event.plain_result("渲染资料卡失败，请稍后重试")
             return
 
         try:
@@ -325,7 +325,7 @@ class MyPlugin(Star):
         if t in {"tags", "tag"}:
             problems, err = await self.cf_data_service.load_problemset()
             if err:
-                yield event.plain_result(f"获取标签失败：{err}")
+                yield event.plain_result("获取标签失败，请稍后重试")
                 return
             tags = sorted(
                 {
