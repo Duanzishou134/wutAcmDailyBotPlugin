@@ -155,7 +155,7 @@ class MyPlugin(Star):
         '''这里就是该指令的帮助说明，将会被 /help 或类似指令显示。'''
         yield event.plain_result(
             "/pic <pic_name> 发送指定图片\n"
-            "/pic -list [pic_name] 查看图片列表\n"
+            "/pic list [pic_name] 查看图片列表\n"
             "/add_pic <pic_name> <pic> [-n | -no-suffix] 添加图片(回复图片也可)"
         )
     
