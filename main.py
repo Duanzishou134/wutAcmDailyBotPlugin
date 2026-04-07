@@ -225,6 +225,26 @@ class MyPlugin(Star):
         result = await self.pic_service.add_pic(pic_name, image, add_suffix=not no_suffix)
         yield event.plain_result(result)
 
+    @filter.command("del")
+    async def del_pic(self, event: AstrMessageEvent):
+        """删除指定图片，支持前缀匹配。"""
+        args = event.get_message_str().split()
+        if len(args) < 2:
+            yield event.plain_result("用法: /del <pic_name>")
+            return
+
+        pic_name = args[1]
+        status, payload = await self.pic_service.del_pic(pic_name)
+        if status == "deleted":
+            yield event.plain_result(f"已删除图片 {payload}。")
+        elif status == "conflict":
+            conflict_list = "\n".join(payload)
+            yield event.plain_result(f"存在前缀冲突，请指名图片名:\n{conflict_list}")
+        elif status == "error":
+            yield event.plain_result(str(payload))
+        else:
+            yield event.plain_result(f"图片 {pic_name} 不存在")
+
 
     @filter.command_group("cf")
     def cf_group(self):

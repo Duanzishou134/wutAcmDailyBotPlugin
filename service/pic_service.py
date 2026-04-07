@@ -108,6 +108,34 @@ class PicService:
         shutil.copy2(source_path, target_path)
         return f"图片 {os.path.basename(target_path)} 添加成功！"
 
+    async def del_pic(self, pic_name: str) -> tuple[str, str | list[str] | None]:
+        """按前缀删除图片，若存在歧义则返回候选列表。"""
+        images = self._get_images()
+        candidates = [(base, path) for base, path in images if base.startswith(pic_name)]
+
+        if not candidates:
+            return "not_found", None
+
+        exact = [(base, path) for base, path in candidates if base == pic_name]
+        if len(exact) == 1:
+            target_base, target_path = exact[0]
+            try:
+                os.remove(target_path)
+                return "deleted", target_base
+            except OSError as e:
+                return "error", f"删除失败: {e}"
+
+        if len(candidates) == 1:
+            target_base, target_path = candidates[0]
+            try:
+                os.remove(target_path)
+                return "deleted", target_base
+            except OSError as e:
+                return "error", f"删除失败: {e}"
+
+        conflict_names = sorted(base for base, _ in candidates)
+        return "conflict", conflict_names
+
     def _make_unique_path(self, pic_name: str, ext: str) -> str:
         """生成带随机后缀的目标路径"""
         for _ in range(5):
