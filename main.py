@@ -76,15 +76,32 @@ class MyPlugin(Star):
 
     @filter.command("daily problem")
     async def daily_problem(self, event: AstrMessageEvent):
-        """返回今日每日一题链接。"""
-        daily_url = await self.daily_problem_service.get_daily_problem()
-        yield event.plain_result(f"今天的每日一题是:{daily_url}")
+        """推送今日两道每日一题"""
+        problems = await self.daily_problem_service.get_daily_problems()
+        easy = problems["easy"]
+        hard = problems["hard"]
+        msg = "今天的每日一题是:\n"
+        if easy and easy.get("url"):
+            msg += f"easy: {easy['url']}\n"
+        else:
+            msg += "easy: 暂时无法生成\n"
+        if hard and hard.get("url"):
+            msg += f"hard: {hard['url']}"
+        else:
+            msg += "hard: 暂时无法生成"
+        yield event.plain_result(msg)
 
     @filter.command("daily finish")
     async def daily_finish(self, event: AstrMessageEvent):
-        """标记当前用户完成每日一题。"""
+        """标记当前用户完成每日一题。用法：daily finish easy 或 daily finish hard"""
         qq = event.get_sender_id()
-        result = await self.daily_problem_service.daily_finish(qq)
+        text = event.message_str.strip()  # 例如 "daily finish easy"
+        parts = text.split()
+        if len(parts) < 3:
+            yield event.plain_result("请指定难度：daily finish easy 或 daily finish hard")
+            return
+        difficulty = parts[2].lower()  # 取第三个词作为难度
+        result = await self.daily_problem_service.daily_finish_by_difficulty(qq, difficulty)
         yield event.plain_result(f"{result}")
 
     @filter.command("rank")
